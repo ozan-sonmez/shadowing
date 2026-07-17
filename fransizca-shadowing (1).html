@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fransızca Shadowing Pratiği</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel2: #1f2330;
+    --accent: #4f8cff;
+    --accent2: #2ecC71;
+    --text: #e7e9ee;
+    --muted: #8a8fa3;
+    --border: #2a2f3d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(180deg, #0f1117, #14161f);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+  }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .row label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+
+  select, input[type=range] { accent-color: var(--accent); }
+  select {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 14px;
+  }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .88; }
+  button.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .sentences {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .sentence {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    font-size: 16px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .sentence:hover { border-color: var(--accent); }
+  .sentence.active {
+    background: rgba(79,140,255,0.15);
+    border-color: var(--accent);
+  }
+  .sentence .idx { color: var(--muted); font-size: 12px; margin-right: 8px; }
+
+  .word {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 1px 2px;
+    transition: background .12s;
+  }
+  .word:hover { background: rgba(79,140,255,0.25); }
+  .word.speaking { background: var(--accent2); color: #0f1117; }
+
+  .controls-main {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    margin-top: 6px;
+  }
+  .controls-main button.big {
+    width: 56px; height: 56px; border-radius: 50%;
+    font-size: 20px; display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; color: var(--muted); margin-top: 10px;
+  }
+  .progress-track {
+    height: 5px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin-top: 8px;
+  }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width .2s; }
+
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  kbd {
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 6px; font-size: 11px;
+  }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🇫🇷 Fransızca Shadowing Pratiği</h1>
+  <div class="subtitle">Metnini yapıştır, native sesle dinle, üstüne konuş (shadowing).</div>
+
+  <div class="panel">
+    <textarea id="textInput" placeholder="Fransızca metnini buraya yapıştır ya da yaz..."></textarea>
+    <div class="row">
+      <button id="loadBtn">Metni Yükle</button>
+      <button id="clearBtn" class="secondary">Temizle</button>
+    </div>
+  </div>
+
+  <div class="panel" id="playerPanel" style="display:none;">
+    <div class="sentences" id="sentenceList"></div>
+
+    <div class="controls-main">
+      <button class="secondary big" id="prevBtn" title="Önceki cümle">⏮</button>
+      <button class="big" id="playPauseBtn" title="Oynat / Duraklat">▶</button>
+      <button class="secondary big" id="nextBtn" title="Sonraki cümle">⏭</button>
+    </div>
+
+    <div class="row" style="justify-content:center; margin-top:14px;">
+      <button class="secondary" id="loopBtn">🔁 Loop: Kapalı</button>
+      <button class="secondary" id="replayBtn">↺ Bu cümleyi tekrar çal</button>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusText">Hazır</span>
+      <span id="counterText">0 / 0</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+    <div class="hint">
+      <kbd>Space</kbd> oynat/duraklat · <kbd>←</kbd> önceki · <kbd>→</kbd> sonraki · <kbd>L</kbd> loop aç/kapa · cümleye tıklayarak oradan başlat · tek bir kelimeye tıklayarak sadece onu dinle
+    </div>
+  </div>
+
+  <div class="empty" id="emptyState">Henüz bir metin yüklenmedi.</div>
+
+  <div class="panel" id="setupPanel">
+    <div class="row">
+      <label style="flex:1; min-width:220px;">Google Cloud TTS API Anahtarı (bu cihazda kalıcı saklanır)
+        <input type="password" id="apiKeyInput" placeholder="AIza..." style="background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px; width:100%;">
+      </label>
+      <button id="saveKeyBtn" class="secondary">Kaydet</button>
+      <button id="clearKeyBtn" class="secondary">Anahtarı Sil</button>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <span id="engineStatus" style="font-size:13px; color:var(--muted);">Ses motoru: Tarayıcı (Web Speech API)</span>
+    </div>
+    <div class="row">
+      <label>Ses (aksan)
+        <select id="voiceSelect"></select>
+      </label>
+      <label>Hız
+        <select id="speedSelect">
+          <option value="0.6">0.6x — çok yavaş</option>
+          <option value="0.75" selected>0.75x — yavaş</option>
+          <option value="0.85">0.85x</option>
+          <option value="1">1x — native</option>
+        </select>
+      </label>
+      <label>Tekrar sayısı / cümle
+        <select id="repeatSelect">
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </label>
+      <label>Tekrarlar arası boşluk
+        <select id="gapSelect">
+          <option value="0">yok</option>
+          <option value="1000" selected>1 sn</option>
+          <option value="2000">2 sn</option>
+          <option value="3000">3 sn</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+const textInput = document.getElementById('textInput');
+const loadBtn = document.getElementById('loadBtn');
+const clearBtn = document.getElementById('clearBtn');
+const voiceSelect = document.getElementById('voiceSelect');
+const speedSelect = document.getElementById('speedSelect');
+const repeatSelect = document.getElementById('repeatSelect');
+const gapSelect = document.getElementById('gapSelect');
+const sentenceList = document.getElementById('sentenceList');
+const playerPanel = document.getElementById('playerPanel');
+const emptyState = document.getElementById('emptyState');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const loopBtn = document.getElementById('loopBtn');
+const replayBtn = document.getElementById('replayBtn');
+const statusText = document.getElementById('statusText');
+const counterText = document.getElementById('counterText');
+const progressFill = document.getElementById('progressFill');
+
+let sentences = [];
+let currentIndex = 0;
+let repeatsLeft = 0;
+let isPlaying = false;
+let loopMode = false;
+let voices = [];
+let selectedVoice = null;
+let currentUtterance = null;
+let gapTimer = null;
+
+// --- Sentence splitting (core feature, defined and wired up FIRST so it always works
+//     regardless of whether anything below related to TTS engines fails) ---
+function splitSentences(text) {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  const parts = clean.match(/[^.!?]+[.!?]+|\s*[^.!?]+$/g) || [clean];
+  return parts.map(s => s.trim()).filter(Boolean);
+}
+
+loadBtn.addEventListener('click', () => {
+  const text = textInput.value;
+  sentences = splitSentences(text);
+  if (sentences.length === 0) {
+    alert('Lütfen önce bir metin gir.');
+    return;
+  }
+  currentIndex = 0;
+  renderSentences();
+  playerPanel.style.display = 'block';
+  emptyState.style.display = 'none';
+  updateStatus('Hazır');
+  updateCounter();
+  stopPlayback();
+  prefetchRange(0, 3); // warm the first few sentences right away
+});
+
+clearBtn.addEventListener('click', () => {
+  textInput.value = '';
+  sentences = [];
+  playerPanel.style.display = 'none';
+  emptyState.style.display = 'block';
+  stopPlayback();
+});
+
+// --- Google Cloud TTS state (API key persisted locally on this device only) ---
+let googleApiKey = '';
+let ttsEngine = 'browser'; // 'browser' or 'google'
+const audioCache = new Map();
+let currentGoogleAudio = null;
+const API_KEY_STORAGE_KEY = 'shadowing_google_tts_api_key';
+
+const GOOGLE_VOICES = [
+  { name: 'fr-FR-Neural2-A', label: 'Neural2-A (kadın, en doğal)' },
+  { name: 'fr-FR-Neural2-B', label: 'Neural2-B (erkek, en doğal)' },
+  { name: 'fr-FR-Neural2-C', label: 'Neural2-C (kadın)' },
+  { name: 'fr-FR-Neural2-D', label: 'Neural2-D (erkek)' },
+  { name: 'fr-FR-Wavenet-A', label: 'Wavenet-A (kadın)' },
+  { name: 'fr-FR-Wavenet-B', label: 'Wavenet-B (erkek)' },
+];
+let selectedGoogleVoice = GOOGLE_VOICES[0].name;
+
+const apiKeyInput = document.getElementById('apiKeyInput');
+const saveKeyBtn = document.getElementById('saveKeyBtn');
+const clearKeyBtn = document.getElementById('clearKeyBtn');
+const engineStatus = document.getElementById('engineStatus');
+
+function setEngine(engine) {
+  ttsEngine = engine;
+  if (engine === 'google') {
+    engineStatus.textContent = 'Ses motoru: Google Cloud TTS (native kalite) ✓';
+    engineStatus.style.color = 'var(--accent2)';
+    populateGoogleVoiceSelect();
+  } else {
+    engineStatus.textContent = 'Ses motoru: Tarayıcı (Web Speech API)';
+    engineStatus.style.color = 'var(--muted)';
+    loadVoices();
+  }
+}
+
+function populateGoogleVoiceSelect() {
+  voiceSelect.innerHTML = '';
+  GOOGLE_VOICES.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.label;
+    voiceSelect.appendChild(opt);
+  });
+  voiceSelect.value = selectedGoogleVoice;
+}
+
+saveKeyBtn.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) {
+    alert('Lütfen bir API anahtarı gir.');
+    return;
+  }
+  googleApiKey = key;
+  try { localStorage.setItem(API_KEY_STORAGE_KEY, key); } catch (e) { console.warn('localStorage kullanılamıyor:', e); }
+  setEngine('google');
+});
+
+clearKeyBtn.addEventListener('click', () => {
+  googleApiKey = '';
+  apiKeyInput.value = '';
+  audioCache.clear();
+  try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch (e) { /* ignore */ }
+  setEngine('browser');
+});
+
+// Try to load a previously saved key on page open
+try {
+  const saved = localStorage.getItem(API_KEY_STORAGE_KEY);
+  if (saved) {
+    googleApiKey = saved;
+    apiKeyInput.value = saved;
+    setEngine('google');
+  } else {
+    loadVoices();
+  }
+} catch (e) {
+  console.warn('localStorage kullanılamıyor, anahtar her seferinde girilmeli:', e);
+  loadVoices();
+}
+
+voiceSelect.addEventListener('change', () => {
+  if (ttsEngine === 'google') {
+    selectedGoogleVoice = voiceSelect.value;
+  } else {
+    selectedVoice = voices[voiceSelect.value];
+  }
+});
+
+// --- Google Cloud TTS synthesis (with caching to avoid duplicate calls on repeats) ---
+async function synthesizeGoogle(text, voiceName, rate) {
+  const cacheKey = `${voiceName}|${rate}|${text}`;
+  if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const resp = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(googleApiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text },
+        voice: { languageCode: 'fr-FR', name: voiceName },
+        audioConfig: { audioEncoding: 'MP3', speakingRate: rate }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`Google TTS hata ${resp.status}: ${errText.slice(0, 200)}`);
+    }
+    const data = await resp.json();
+    const url = 'data:audio/mp3;base64,' + data.audioContent;
+    audioCache.set(cacheKey, url);
+    return url;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Google TTS zaman aşımına uğradı (10 sn içinde yanıt gelmedi)');
+    }
+    throw err;
+  }
+}
+
+// --- Voice loading, prefer France French voices ---
+function loadVoices() {
+  if (!window.speechSynthesis) {
+    voiceSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.textContent = 'Bu tarayıcı sesli okumayı desteklemiyor';
+    voiceSelect.appendChild(opt);
+    return;
+  }
+  voices = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
+  voiceSelect.innerHTML = '';
+  if (voices.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = 'Fransızca ses bulunamadı (tarayıcı desteklemiyor olabilir)';
+    voiceSelect.appendChild(opt);
+    return;
+  }
+  // Sort: fr-FR first (TCF standard accent), then others
+  voices.sort((a, b) => {
+    const aFR = a.lang.toLowerCase() === 'fr-fr' ? 0 : 1;
+    const bFR = b.lang.toLowerCase() === 'fr-fr' ? 0 : 1;
+    return aFR - bFR;
+  });
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    const tag = v.lang.toLowerCase() === 'fr-fr' ? ' (Fransa — TCF standart)' : ` (${v.lang})`;
+    opt.textContent = v.name + tag;
+    voiceSelect.appendChild(opt);
+  });
+  voiceSelect.selectedIndex = 0;
+  selectedVoice = voices[0];
+}
+if (window.speechSynthesis) {
+  speechSynthesis.onvoiceschanged = () => { if (ttsEngine === 'browser') loadVoices(); };
+}
+
+// --- Sentence splitting: (moved to top of script, see above) ---
+
+function renderSentences() {
+  sentenceList.innerHTML = '';
+  sentences.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'sentence' + (i === currentIndex ? ' active' : '');
+
+    const idxSpan = document.createElement('span');
+    idxSpan.className = 'idx';
+    idxSpan.textContent = i + 1;
+    div.appendChild(idxSpan);
+
+    // Split into words, keeping punctuation/spaces attached so text still reads naturally
+    const tokens = s.split(/(\s+)/);
+    tokens.forEach(tok => {
+      if (tok.trim() === '') {
+        div.appendChild(document.createTextNode(tok));
+        return;
+      }
+      const wordSpan = document.createElement('span');
+      wordSpan.className = 'word';
+      wordSpan.textContent = tok;
+      wordSpan.addEventListener('click', (e) => {
+        e.stopPropagation();
+        speakSingleWord(tok, wordSpan);
+      });
+      div.appendChild(wordSpan);
+    });
+
+    div.addEventListener('click', () => {
+      stopPlayback();
+      currentIndex = i;
+      highlightCurrent();
+      updateCounter();
+    });
+    sentenceList.appendChild(div);
+  });
+}
+
+// --- Single word playback (does not disturb main sentence playback state) ---
+function speakSingleWord(word, wordSpan) {
+  const wasPlaying = isPlaying;
+  if (wasPlaying) stopPlayback();
+  speechSynthesis.cancel();
+  if (currentGoogleAudio) { currentGoogleAudio.pause(); currentGoogleAudio = null; }
+
+  const cleanWord = word.replace(/^[.,!?;:«»"']+|[.,!?;:«»"']+$/g, '') || word;
+  const rate = parseFloat(speedSelect.value);
+  wordSpan.classList.add('speaking');
+
+  if (ttsEngine === 'google') {
+    synthesizeGoogle(cleanWord, selectedGoogleVoice, rate)
+      .then(url => {
+        const audio = new Audio(url);
+        currentGoogleAudio = audio;
+        audio.onended = () => wordSpan.classList.remove('speaking');
+        audio.onerror = () => wordSpan.classList.remove('speaking');
+        audio.play();
+      })
+      .catch(err => {
+        console.error(err);
+        speakWordWithBrowser(cleanWord, rate, wordSpan);
+      });
+  } else {
+    speakWordWithBrowser(cleanWord, rate, wordSpan);
+  }
+}
+
+function speakWordWithBrowser(word, rate, wordSpan) {
+  const utter = new SpeechSynthesisUtterance(word);
+  if (selectedVoice) {
+    utter.voice = selectedVoice;
+    utter.lang = selectedVoice.lang;
+  } else {
+    utter.lang = 'fr-FR';
+  }
+  utter.rate = rate;
+  utter.onend = () => wordSpan.classList.remove('speaking');
+  utter.onerror = () => wordSpan.classList.remove('speaking');
+  speechSynthesis.speak(utter);
+}
+
+function highlightCurrent() {
+  document.querySelectorAll('.sentence').forEach((el, i) => {
+    el.classList.toggle('active', i === currentIndex);
+  });
+  const activeEl = sentenceList.children[currentIndex];
+  if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  updateCounter();
+  const pct = sentences.length ? ((currentIndex) / sentences.length) * 100 : 0;
+  progressFill.style.width = pct + '%';
+}
+
+function updateCounter() {
+  counterText.textContent = `${sentences.length ? currentIndex + 1 : 0} / ${sentences.length}`;
+}
+
+function updateStatus(t) {
+  statusText.textContent = t;
+}
+
+// --- Prefetching: warm the cache for upcoming sentences in the background so there's
+//     no wait when playback advances. Silent no-op if not using Google engine or already cached. ---
+function prefetchSentence(index) {
+  if (ttsEngine !== 'google') return;
+  if (!sentences[index]) return;
+  const rate = parseFloat(speedSelect.value);
+  synthesizeGoogle(sentences[index], selectedGoogleVoice, rate).catch(() => { /* silent warm-up failure, will retry live if needed */ });
+}
+
+function prefetchRange(fromIndex, count) {
+  for (let i = fromIndex; i < fromIndex + count; i++) prefetchSentence(i);
+}
+
+// --- Playback engine ---
+function speakCurrentSentence(onDone) {
+  if (!sentences[currentIndex]) return;
+  const text = sentences[currentIndex];
+  const rate = parseFloat(speedSelect.value);
+
+  if (ttsEngine === 'google') {
+    updateStatus('Ses hazırlanıyor...');
+    synthesizeGoogle(text, selectedGoogleVoice, rate)
+      .then(url => {
+        if (!isPlaying) return;
+        const audio = new Audio(url);
+        currentGoogleAudio = audio;
+        audio.onended = () => { if (isPlaying) onDone(); };
+        audio.onerror = () => { if (isPlaying) onDone(); };
+        audio.play().catch(err => {
+          console.error('audio.play() hatası:', err);
+          updateStatus('Oynatma hatası, tarayıcı sesine geçiliyor');
+          speakWithBrowser(text, rate, onDone);
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        updateStatus('Hata: ' + err.message + ' — tarayıcı sesine geçiliyor');
+        speakWithBrowser(text, rate, onDone);
+      });
+  } else {
+    speakWithBrowser(text, rate, onDone);
+  }
+}
+
+function speakWithBrowser(text, rate, onDone) {
+  const utter = new SpeechSynthesisUtterance(text);
+  if (selectedVoice) {
+    utter.voice = selectedVoice;
+    utter.lang = selectedVoice.lang;
+  } else {
+    utter.lang = 'fr-FR';
+  }
+  utter.rate = rate;
+  currentUtterance = utter;
+  utter.onend = () => { if (isPlaying) onDone(); };
+  utter.onerror = () => { if (isPlaying) onDone(); };
+  speechSynthesis.speak(utter);
+}
+
+function playFromCurrent() {
+  isPlaying = true;
+  playPauseBtn.textContent = '⏸';
+  repeatsLeft = parseInt(repeatSelect.value);
+  runRepeatCycle();
+}
+
+function runRepeatCycle() {
+  if (!isPlaying) return;
+  highlightCurrent();
+  updateStatus(`Çalıyor... (tekrar ${parseInt(repeatSelect.value) - repeatsLeft + 1}/${repeatSelect.value})`);
+  prefetchSentence(currentIndex + 1); // warm next sentence while this one plays
+  speakCurrentSentence(() => {
+    repeatsLeft--;
+    if (repeatsLeft > 0) {
+      const gap = parseInt(gapSelect.value);
+      gapTimer = setTimeout(() => { if (isPlaying) runRepeatCycle(); }, gap);
+    } else {
+      advanceToNext();
+    }
+  });
+}
+
+function advanceToNext() {
+  if (currentIndex < sentences.length - 1) {
+    currentIndex++;
+    repeatsLeft = parseInt(repeatSelect.value);
+    const gap = parseInt(gapSelect.value);
+    gapTimer = setTimeout(() => { if (isPlaying) runRepeatCycle(); }, gap || 200);
+  } else {
+    if (loopMode) {
+      currentIndex = 0;
+      repeatsLeft = parseInt(repeatSelect.value);
+      gapTimer = setTimeout(() => { if (isPlaying) runRepeatCycle(); }, 500);
+    } else {
+      stopPlayback();
+      updateStatus('Bitti ✓');
+    }
+  }
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  if (currentGoogleAudio) {
+    currentGoogleAudio.pause();
+    currentGoogleAudio = null;
+  }
+  clearTimeout(gapTimer);
+  playPauseBtn.textContent = '▶';
+  if (sentences.length) updateStatus('Duraklatıldı');
+}
+
+playPauseBtn.addEventListener('click', () => {
+  if (isPlaying) {
+    stopPlayback();
+  } else if (sentences.length) {
+    playFromCurrent();
+  }
+});
+
+prevBtn.addEventListener('click', () => {
+  stopPlayback();
+  if (currentIndex > 0) currentIndex--;
+  highlightCurrent();
+});
+
+nextBtn.addEventListener('click', () => {
+  stopPlayback();
+  if (currentIndex < sentences.length - 1) currentIndex++;
+  highlightCurrent();
+});
+
+replayBtn.addEventListener('click', () => {
+  stopPlayback();
+  playFromCurrent();
+});
+
+loopBtn.addEventListener('click', () => {
+  loopMode = !loopMode;
+  loopBtn.textContent = '🔁 Loop: ' + (loopMode ? 'Açık' : 'Kapalı');
+});
+
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement === textInput) return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    playPauseBtn.click();
+  } else if (e.code === 'ArrowLeft') {
+    prevBtn.click();
+  } else if (e.code === 'ArrowRight') {
+    nextBtn.click();
+  } else if (e.key.toLowerCase() === 'l') {
+    loopBtn.click();
+  }
+});
+</script>
+</body>
+</html>
